@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="th" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RPG Fitness Quest - ตารางฝึกและอัพสเตตัสตัวละคร</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        cyber: {
+                            dark: '#0f172a',
+                            card: '#1e293b',
+                            accent: '#06b6d4',
+                            purple: '#a855f7',
+                            gold: '#eab308',
+                            danger: '#ef4444',
+                            success: '#22c55e'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Kanit', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome for Gaming Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Kanit -->
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Canvas Confetti for Level Up Effects -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Kanit', sans-serif;
+            background-color: #0b0f19;
+            color: #f8fafc;
+        }
+        
+        .glow-cyan {
+            box-shadow: 0 0 15px rgba(6, 182, 212, 0.4);
+        }
+        .glow-gold {
+            box-shadow: 0 0 20px rgba(234, 179, 8, 0.5);
+        }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        .progress-bar-fill {
+            transition: width 0.5s ease-out;
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-pop {
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+        }
+        .animate-float {
+            animation: float 4s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between antialiased selection:bg-cyan-500 selection:text-white pb-12">
+
+    <!-- Header / Navbar -->
+    <header class="border-b border-slate-800 glass-panel sticky top-0 z-30">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-cyan-500/20">
+                    <i class="fa-solid fa-gamepad text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-500 bg-clip-text text-transparent">
+                        RPG FITNESS QUEST
+                    </h1>
+                    <p class="text-xs text-slate-400">เปลี่ยนการออกกำลังกายให้เป็นเกม</p>
+                </div>
+            </div>
+
+            <!-- Global Quick Stats -->
+            <div class="flex items-center gap-4 bg-slate-900/80 px-4 py-1.5 rounded-full border border-slate-700/60 text-xs sm:text-sm">
+                <div class="flex items-center gap-1.5 text-yellow-400">
+                    <i class="fa-solid fa-fire"></i>
+                    <span id="streak-count" class="font-bold">1</span> วันต่อเนื่อง
+                </div>
+                <div class="h-4 w-px bg-slate-700"></div>
+                <div class="flex items-center gap-1.5 text-cyan-400">
+                    <i class="fa-solid fa-trophy"></i>
+                    <span id="completed-count" class="font-bold">0</span> ภารกิจสำเร็จ
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="max-w-6xl mx-auto px-4 pt-6 flex-grow w-full">
+        
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+            <!-- LEFT COLUMN: Character Avatar & Stats (4 Cols) -->
+            <section class="lg:col-span-4 flex flex-col gap-6">
+                
+                <!-- Character Card -->
+                <div class="glass-panel rounded-2xl p-6 relative overflow-hidden flex flex-col items-center text-center shadow-xl">
+                    
+                    <div class="absolute -top-16 -left-16 w-32 h-32 bg-cyan-500/20 rounded-full blur-3xl"></div>
+                    <div class="absolute -bottom-16 -right-16 w-32 h-32 bg-purple-500/20 rounded-full blur-3xl"></div>
+
+                    <!-- Level Badge -->
+                    <div class="absolute top-4 right-4 bg-slate-900/80 border border-yellow-500/50 px-3 py-1 rounded-full flex items-center gap-1.5 shadow-md">
+                        <i class="fa-solid fa-crown text-yellow-400 text-xs"></i>
+                        <span class="text-xs text-slate-300">LVL</span>
+                        <span id="char-level" class="font-bold text-yellow-400 text-base">1</span>
+                    </div>
+
+                    <!-- Character Avatar Icon Container -->
+                    <div class="relative mt-2 mb-4 animate-float">
+                        <div id="avatar-ring" class="w-32 h-32 rounded-full p-1 bg-gradient-to-tr from-cyan-500 via-purple-500 to-yellow-400 shadow-lg glow-cyan flex items-center justify-center">
+                            <div class="w-full h-full rounded-full bg-slate-900 flex items-center justify-center overflow-hidden relative">
+                                <i id="avatar-icon" class="fa-solid fa-user-ninja text-6xl text-cyan-400"></i>
+                            </div>
+                        </div>
+                        <div class="absolute -bottom-2 bg-slate-900 text-cyan-300 text-xs px-3 py-0.5 rounded-full border border-cyan-500/50 uppercase font-semibold tracking-wider shadow" id="char-title">
+                            ผู้เริ่มต้น (Novice)
+                        </div>
+                    </div>
+
+                    <!-- Character Name Input / Display -->
+                    <div class="w-full mb-3">
+                        <input type="text" id="char-name-input" class="bg-transparent text-center font-bold text-xl text-white focus:outline-none border-b border-transparent hover:border-slate-700 focus:border-cyan-500 transition-colors w-full" value="นักฮีโร่สายสปอร์ต" title="คลิกเพื่อเปลี่ยนชื่อตัวละคร" />
+                        <p class="text-xs text-slate-400 mt-1" id="rank-name">Rank E - Adventurer</p>
+                    </div>
+
+                    <!-- XP Progress Bar -->
+                    <div class="w-full bg-slate-900/90 p-3 rounded-xl border border-slate-800 mb-4">
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-400 font-medium">ค่าประสบการณ์ (XP)</span>
+                            <span id="xp-text" class="text-cyan-400 font-bold">0 / 100 XP</span>
+                        </div>
+                        <div class="w-full h-3 bg-slate-800 rounded-full overflow-hidden p-0.5">
+                            <div id="xp-bar" class="h-full bg-gradient-to-r from-cyan-500 to-purple-500 rounded-full progress-bar-fill w-0"></div>
+                        </div>
+                    </div>
+
+                    <!-- Core Stats Grid -->
+                    <div class="w-full grid grid-cols-2 gap-3 text-left">
+                        <!-- STR -->
+                        <div class="bg-slate-900/60 p-3 rounded-xl border border-red-500/20 flex flex-col justify-between">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-xs text-red-400 font-semibold flex items-center gap-1.5">
+                                    <i class="fa-solid fa-dumbbell"></i> STR
+                                </span>
+                                <span id="stat-str" class="font-bold text-white">10</span>
+                            </div>
+                            <div class="text-[10px] text-slate-500">พละกำลัง / เวท</div>
+                        </div>
+
+                        <!-- END -->
+                        <div class="bg-slate-900/60 p-3 rounded-xl border border-green-500/20 flex flex-col justify-between">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-xs text-green-400 font-semibold flex items-center gap-1.5">
+                                    <i class="fa-solid fa-heart-pulse"></i> END
+                                </span>
+                                <span id="stat-end" class="font-bold text-white">10</span>
+                            </div>
+                            <div class="text-[10px] text-slate-500">ความอึด / วิ่ง</div>
+                        </div>
+
+                        <!-- AGI -->
+                        <div class="bg-slate-900/60 p-3 rounded-xl border border-blue-500/20 flex flex-col justify-between">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-xs text-blue-400 font-semibold flex items-center gap-1.5">
+                                    <i class="fa-solid fa-bolt"></i> AGI
+                                </span>
+                                <span id="stat-agi" class="font-bold text-white">10</span>
+                            </div>
+                            <div class="text-[10px] text-slate-500">ความเร็ว / คล่องแคล่ว</div>
+                        </div>
+
+                        <!-- VIT -->
+                        <div class="bg-slate-900/60 p-3 rounded-xl border border-yellow-500/20 flex flex-col justify-between">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-xs text-yellow-400 font-semibold flex items-center gap-1.5">
+                                    <i class="fa-solid fa-shield-halved"></i> VIT
+                                </span>
+                                <span id="stat-vit" class="font-bold text-white">10</span>
+                            </div>
+                            <div class="text-[10px] text-slate-500">แกนกลาง / สุขภาพ</div>
+                        </div>
+                    </div>
+
+                    <!-- Reset Character Data Button -->
+                    <button id="btn-reset-data" class="mt-4 text-xs text-slate-500 hover:text-red-400 transition-colors flex items-center gap-1">
+                        <i class="fa-solid fa-rotate-right"></i> รีเซ็ตข้อมูลทั้งหมด
+                    </button>
+                </div>
+
+                <!-- Achievements Mini Section -->
+                <div class="glass-panel rounded-2xl p-5 shadow-xl">
+                    <h3 class="text-sm font-bold text-slate-300 uppercase tracking-wider mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-medal text-yellow-400"></i> ความสำเร็จ (Achievements)
+                    </h3>
+                    <div id="achievements-list" class="grid grid-cols-4 gap-2">
+                        <!-- Dynamic Badges -->
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- RIGHT COLUMN: Workout Schedules & Quests (8 Cols) -->
+            <section class="lg:col-span-8 flex flex-col gap-6">
+
+                <!-- Controls & Day Selector Header -->
+                <div class="glass-panel rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">
+                    <div class="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 w-full sm:w-auto" id="day-selector">
+                        <!-- Days buttons dynamically rendered -->
+                    </div>
+
+                    <!-- Add New Quest Button -->
+                    <button id="btn-open-modal" class="w-full sm:w-auto bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-sm font-semibold px-4 py-2 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/25 transition-all">
+                        <i class="fa-solid fa-plus"></i> เพิ่มภารกิจฝึก
+                    </button>
+                </div>
+
+                <!-- Daily Workout Quest Checklist -->
+                <div class="glass-panel rounded-2xl p-6 shadow-xl flex-grow">
+                    <div class="flex justify-between items-center mb-6">
+                        <div>
+                            <h2 class="text-xl font-bold flex items-center gap-2" id="current-day-title">
+                                <i class="fa-solid fa-calendar-day text-cyan-400"></i> ตารางฝึกประจำวัน
+                            </h2>
+                            <p class="text-xs text-slate-400 mt-0.5">ทำภารกิจออกกำลังกายเพื่ออัพสเตตัสและรับ XP!</p>
+                        </div>
+                        <span id="daily-progress-badge" class="text-xs bg-slate-900 text-slate-300 border border-slate-700 px-3 py-1 rounded-full font-semibold">
+                            สำเร็จ 0/0
+                        </span>
+                    </div>
+
+                    <!-- Quest List Container -->
+                    <div id="quest-list" class="flex flex-col gap-3">
+                        <!-- Quests rendered via JS -->
+                    </div>
+
+                    <!-- Empty State -->
+                    <div id="empty-state" class="hidden flex-col items-center justify-center py-12 text-slate-500">
+                        <i class="fa-solid fa-scroll text-5xl mb-3 opacity-40"></i>
+                        <p class="text-sm">ไม่มีภารกิจออกกำลังกายในวันนี้</p>
+                        <button onclick="document.getElementById('btn-open-modal').click()" class="mt-3 text-xs text-cyan-400 hover:underline">
+                            + เพิ่มภารกิจใหม่
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Recent Workout History -->
+                <div class="glass-panel rounded-2xl p-5 shadow-xl">
+                    <h3 class="text-sm font-bold text-slate-300 uppercase tracking-wider mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-clock-rotate-left text-purple-400"></i> ประวัติการฝึกเมื่อเร็วๆ นี้
+                    </h3>
+                    <div id="history-log" class="flex flex-col gap-2 max-h-48 overflow-y-auto pr-1">
+                        <!-- History Log rendered via JS -->
+                    </div>
+                </div>
+
+            </section>
+
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-8 text-center text-xs text-slate-500 py-4">
+        RPG Fitness Quest &copy; Gamified Workout Tracker
+    </footer>
+
+    <!-- MODAL: Add Custom Workout Quest -->
+    <div id="quest-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden px-4">
+        <div class="glass-panel bg-slate-900 border border-slate-700 w-full max-w-md rounded-2xl p-6 shadow-2xl animate-pop relative">
+            <button id="btn-close-modal" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-dumbbell text-cyan-400"></i> สร้างภารกิจออกกำลังกายใหม่
+            </h3>
+
+            <form id="quest-form" class="flex flex-col gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">ชื่อท่าฝึก / กิจกรรม</label>
+                    <input type="text" id="input-title" required placeholder="เช่น วิทพื้น (Push-ups), วิ่งมินิมาราทอน" 
+                        class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">หมวดหมู่ / สเตตัสหลัก</label>
+                        <select id="select-category" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500">
+                            <option value="STR">💪 สายพลัง (STR & VIT)</option>
+                            <option value="END">🏃 สายความอึด (END & AGI)</option>
+                            <option value="AGI">⚡ สายความคล่องตัว (AGI & STR)</option>
+                            <option value="VIT">🧘 สายสุขภาพ/แกนกลาง (VIT & AGI)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">เป้าหมาย (ครั้ง / นาที / กม.)</label>
+                        <input type="text" id="input-target" required placeholder="เช่น 3 เซ็ต x 15 ครั้ง" 
+                            class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">รางวัล XP</label>
+                        <input type="number" id="input-xp" min="10" max="500" value="50" required 
+                            class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">เพิ่มค่า Stat</label>
+                        <input type="number" id="input-stat-gain" min="1" max="50" value="5" required 
+                            class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">กำหนดวันฝึกในสัปดาห์</label>
+                    <div class="grid grid-cols-7 gap-1 text-center" id="days-checkboxes">
+                        <!-- Checkboxes dynamically generated -->
+                    </div>
+                </div>
+
+                <div class="flex gap-2 mt-2">
+                    <button type="button" id="btn-cancel-modal" class="w-1/2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-semibold py-2.5 rounded-xl transition-all">
+                        ยกเลิก
+                    </button>
+                    <button type="submit" class="w-1/2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-sm font-bold py-2.5 rounded-xl shadow-lg shadow-cyan-500/20 transition-all">
+                        บันทึกภารกิจ
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- LEVEL UP CELEBRATION MODAL -->
+    <div id="levelup-modal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-center justify-center hidden px-4">
+        <div class="glass-panel border-2 border-yellow-400/80 w-full max-w-sm rounded-3xl p-6 shadow-2xl text-center animate-pop relative glow-gold">
+            <div class="w-20 h-20 bg-yellow-400/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-yellow-400/50">
+                <i class="fa-solid fa-crown text-4xl text-yellow-400 animate-bounce"></i>
+            </div>
+            <h2 class="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-amber-400 to-yellow-500 tracking-wider">
+                LEVEL UP!
+            </h2>
+            <p class="text-sm text-slate-300 mt-1">ยินดีด้วย! ตัวละครของคุณแข็งแกร่งขึ้นอีกขั้น</p>
+
+            <div class="my-6 bg-slate-950/80 p-4 rounded-2xl border border-slate-800 flex justify-around items-center">
+                <div>
+                    <span class="text-xs text-slate-400 block">เลเวลเดิม</span>
+                    <span id="lvl-old" class="text-xl font-bold text-slate-400">1</span>
+                </div>
+                <i class="fa-solid fa-arrow-right text-yellow-400"></i>
+                <div>
+                    <span class="text-xs text-yellow-400 block font-semibold">เลเวลใหม่</span>
+                    <span id="lvl-new" class="text-3xl font-black text-yellow-400">2</span>
+                </div>
+            </div>
+
+            <p id="title-unlocked" class="text-xs text-cyan-300 font-semibold mb-6 bg-cyan-950/60 py-1.5 px-3 rounded-full border border-cyan-800">
+                ปลดล็อกฉายาใหม่: ผู้เริ่มต้น
+            </p>
+
+            <button id="btn-close-levelup" class="w-full bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 text-slate-950 font-extrabold py-3 rounded-xl shadow-lg shadow-yellow-500/30 transition-all uppercase tracking-wider text-sm">
+                ลุยต่อเลย!
+            </button>
+        </div>
+    </div>
+
+    <!-- Application Script -->
+    <script>
+        const DAYS_OF_WEEK = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
+        const CATEGORY_MAP = {
+            'STR': { name: 'สายพลัง (STR)', color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/30', icon: 'fa-dumbbell', stats: ['str', 'vit'] },
+            'END': { name: 'สายอึด (END)', color: 'text-green-400', bg: 'bg-green-500/10', border: 'border-green-500/30', icon: 'fa-heart-pulse', stats: ['end', 'agi'] },
+            'AGI': { name: 'สายคล่อง (AGI)', color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/30', icon: 'fa-bolt', stats: ['agi', 'str'] },
+            'VIT': { name: 'สายแกนกลาง (VIT)', color: 'text-yellow-400', bg: 'bg-yellow-500/10', border: 'border-yellow-500/30', icon: 'fa-shield-halved', stats: ['vit', 'agi'] }
+        };
+
+        const TITLES = [
+            { lvl: 1, title: 'ผู้เริ่มต้น (Novice)', rank: 'Rank E - Adventurer', icon: 'fa-user-ninja', color: 'text-cyan-400' },
+            { lvl: 5, title: 'นักรบมือใหม่ (Apprentice)', rank: 'Rank D - Bronze Athlete', icon: 'fa-user-shield', color: 'text-green-400' },
+            { lvl: 10, title: 'นักสู้ผู้เชี่ยวชาญ (Adept Fighter)', rank: 'Rank C - Silver Warrior', icon: 'fa-user-astronaut', color: 'text-blue-400' },
+            { lvl: 20, title: 'แชมเปี้ยนไร้พ่าย (Champion)', rank: 'Rank B - Gold Champion', icon: 'fa-user-tie', color: 'text-purple-400' },
+            { lvl: 35, title: 'ปรมาจารย์แห่งฟิตเนส (Master)', rank: 'Rank A - Mythic Legend', icon: 'fa-crown', color: 'text-yellow-400' }
+        ];
+
+        const defaultState = {
+            character: {
+                name: 'นักฮีโร่สายสปอร์ต',
+                level: 1,
+                xp: 0,
+                maxXp: 100,
+                stats: { str: 10, end: 10, agi: 10, vit: 10 },
+                streak: 1,
+                lastActiveDate: new Date().toISOString().split('T')[0]
+            },
+            quests: [
+                { id: '1', title: 'วิทพื้นดันพื้น (Push-ups)', category: 'STR', target: '3 เซ็ต x 15 ครั้ง', xp: 50, statGain: 5, days: [1, 3, 5], completedDates: [] },
+                { id: '2', title: 'วิ่งคาร์ดิโอ (Cardio Run)', category: 'END', target: '3 กิโลเมตร หรือ 20 นาที', xp: 80, statGain: 8, days: [1, 2, 4, 6], completedDates: [] },
+                { id: '3', title: 'แพลงก์เกร็งหน้าท้อง (Plank Hold)', category: 'VIT', target: '3 เซ็ต x 1 นาที', xp: 40, statGain: 4, days: [0, 2, 4, 5], completedDates: [] },
+                { id: '4', title: 'ยืดเหยียดกล้ามเนื้อ (Stretching)', category: 'AGI', target: '10 นาที', xp: 30, statGain: 3, days: [0, 1, 2, 3, 4, 5, 6], completedDates: [] }
+            ],
+            history: [],
+            selectedDay: new Date().getDay()
+        };
+
+        let state = JSON.parse(localStorage.getItem('rpg_fitness_state')) || defaultState;
+
+        function saveState() {
+            localStorage.setItem('rpg_fitness_state', JSON.stringify(state));
+            render();
+        }
+
+        function getTodayString() {
+            return new Date().toISOString().split('T')[0];
+        }
+
+        function getCharacterRank(level) {
+            let current = TITLES[0];
+            for (let t of TITLES) {
+                if (level >= t.lvl) current = t;
+            }
+            return current;
+        }
+
+        function completeQuest(questId) {
+            const quest = state.quests.find(q => q.id === questId);
+            if (!quest) return;
+
+            const today = getTodayString();
+            if (!quest.completedDates.includes(today)) {
+                quest.completedDates.push(today);
+                
+                const categoryInfo = CATEGORY_MAP[quest.category];
+                const primaryStat = categoryInfo.stats[0];
+                const secondaryStat = categoryInfo.stats[1];
+
+                state.character.stats[primaryStat] += quest.statGain;
+                state.character.stats[secondaryStat] += Math.ceil(quest.statGain / 2);
+                
+                state.history.unshift({
+                    id: Date.now(),
+                    title: quest.title,
+                    xp: quest.xp,
+                    date: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }),
+                    category: quest.category
+                });
+                if (state.history.length > 15) state.history.pop();
+
+                addXP(quest.xp);
+
+                if (typeof confetti === 'function') {
+                    confetti({
+                        particleCount: 70,
+                        spread: 60,
+                        origin: { y: 0.8 }
+                    });
+                }
+
+                saveState();
+            }
+        }
+
+        function addXP(amount) {
+            let char = state.character;
+            char.xp += amount;
+
+            let leveledUp = false;
+            let oldLvl = char.level;
+
+            while (char.xp >= char.maxXp) {
+                char.xp -= char.maxXp;
+                char.level += 1;
+                char.maxXp = Math.round(char.level * 100);
+                
+                char.stats.str += 2;
+                char.stats.end += 2;
+                char.stats.agi += 2;
+                char.stats.vit += 2;
+                leveledUp = true;
+            }
+
+            if (leveledUp) {
+                showLevelUpModal(oldLvl, char.level);
+            }
+        }
+
+        function showLevelUpModal(oldLvl, newLvl) {
+            const modal = document.getElementById('levelup-modal');
+            document.getElementById('lvl-old').textContent = oldLvl;
+            document.getElementById('lvl-new').textContent = newLvl;
+            
+            const newRank = getCharacterRank(newLvl);
+            document.getElementById('title-unlocked').textContent = `ฉายาปัจจุบัน: ${newRank.title}`;
+
+            modal.classList.remove('hidden');
+
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 150,
+                    spread: 100,
+                    origin: { y: 0.5 }
+                });
+            }
+        }
+
+        function deleteQuest(questId) {
+            state.quests = state.quests.filter(q => q.id !== questId);
+            saveState();
+        }
+
+        function render() {
+            const char = state.character;
+            const rank = getCharacterRank(char.level);
+            const today = getTodayString();
+
+            document.getElementById('char-level').textContent = char.level;
+            document.getElementById('char-title').textContent = rank.title;
+            document.getElementById('rank-name').textContent = rank.rank;
+            document.getElementById('avatar-icon').className = `fa-solid ${rank.icon} text-6xl ${rank.color}`;
+            
+            if (document.activeElement !== document.getElementById('char-name-input')) {
+                document.getElementById('char-name-input').value = char.name;
+            }
+
+            document.getElementById('xp-text').textContent = `${char.xp} / ${char.maxXp} XP`;
+            const xpPercent = Math.min(100, Math.round((char.xp / char.maxXp) * 100));
+            document.getElementById('xp-bar').style.width = `${xpPercent}%`;
+
+            document.getElementById('stat-str').textContent = char.stats.str;
+            document.getElementById('stat-end').textContent = char.stats.end;
+            document.getElementById('stat-agi').textContent = char.stats.agi;
+            document.getElementById('stat-vit').textContent = char.stats.vit;
+
+            document.getElementById('streak-count').textContent = char.streak || 1;
+            
+            const totalCompleted = state.quests.reduce((acc, q) => acc + q.completedDates.length, 0);
+            document.getElementById('completed-count').textContent = totalCompleted;
+
+            const daySelectorContainer = document.getElementById('day-selector');
+            daySelectorContainer.innerHTML = '';
+            DAYS_OF_WEEK.forEach((dayName, idx) => {
+                const isSelected = state.selectedDay === idx;
+                const isToday = new Date().getDay() === idx;
+
+                const btn = document.createElement('button');
+                btn.className = `px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1 ${
+                    isSelected 
+                        ? 'bg-cyan-500 text-slate-950 font-bold shadow-md shadow-cyan-500/20' 
+                        : 'bg-slate-900/80 text-slate-400 hover:text-white border border-slate-800'
+                }`;
+                btn.innerHTML = `
+                    ${dayName}
+                    ${isToday ? '<span class="w-1.5 h-1.5 rounded-full bg-cyan-300"></span>' : ''}
+                `;
+                btn.onclick = () => {
+                    state.selectedDay = idx;
+                    render();
+                };
+                daySelectorContainer.appendChild(btn);
+            });
+
+            document.getElementById('current-day-title').innerHTML = `
+                <i class="fa-solid fa-calendar-day text-cyan-400"></i> ตารางฝึกวัน${DAYS_OF_WEEK[state.selectedDay]}
+            `;
+
+            const questListContainer = document.getElementById('quest-list');
+            const emptyState = document.getElementById('empty-state');
+            questListContainer.innerHTML = '';
+
+            const activeQuests = state.quests.filter(q => q.days.includes(state.selectedDay));
+            let completedTodayCount = 0;
+
+            if (activeQuests.length === 0) {
+                emptyState.classList.remove('hidden');
+                emptyState.classList.add('flex');
+            } else {
+                emptyState.classList.add('hidden');
+                emptyState.classList.remove('flex');
+
+                activeQuests.forEach(quest => {
+                    const isDoneToday = quest.completedDates.includes(today);
+                    if (isDoneToday) completedTodayCount++;
+
+                    const cat = CATEGORY_MAP[quest.category] || CATEGORY_MAP['STR'];
+
+                    const questCard = document.createElement('div');
+                    questCard.className = `p-4 rounded-xl border transition-all flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 ${
+                        isDoneToday 
+                            ? 'bg-slate-900/40 border-slate-800 opacity-75' 
+                            : `${cat.bg} ${cat.border} hover:border-slate-600`
+                    }`;
+
+                    questCard.innerHTML = `
+                        <div class="flex items-start gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center border border-slate-800 ${cat.color} shrink-0 mt-0.5 sm:mt-0">
+                                <i class="fa-solid ${cat.icon} text-lg"></i>
+                            </div>
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <h4 class="font-bold text-sm text-white ${isDoneToday ? 'line-through text-slate-400' : ''}">${quest.title}</h4>
+                                    <span class="text-[10px] px-2 py-0.5 rounded-md bg-slate-900 border border-slate-700 ${cat.color}">
+                                        ${cat.name}
+                                    </span>
+                                </div>
+                                <p class="text-xs text-slate-400 mt-1">เป้าหมาย: <span class="text-slate-200">${quest.target}</span></p>
+                                <div class="flex gap-3 text-[11px] text-slate-400 mt-1">
+                                    <span class="text-cyan-400 font-semibold">+${quest.xp} XP</span>
+                                    <span class="text-purple-400 font-semibold">+${quest.statGain} Stat Points</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+                            <button onclick="deleteQuest('${quest.id}')" class="p-2 text-slate-600 hover:text-red-400 transition-colors text-xs" title="ลบภารกิจ">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                            <button onclick="completeQuest('${quest.id}')" ${isDoneToday ? 'disabled' : ''} 
+                                class="px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all w-full sm:w-auto justify-center ${
+                                    isDoneToday 
+                                        ? 'bg-slate-800 text-green-400 border border-green-500/30 cursor-default' 
+                                        : 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 shadow-md shadow-cyan-500/20'
+                                }">
+                                ${isDoneToday ? '<i class="fa-solid fa-check-double"></i> สำเร็จแล้ว' : '<i class="fa-solid fa-play"></i> พิชิตภารกิจ'}
+                            </button>
+                        </div>
+                    `;
+
+                    questListContainer.appendChild(questCard);
+                });
+            }
+
+            document.getElementById('daily-progress-badge').textContent = `สำเร็จ ${completedTodayCount}/${activeQuests.length}`;
+
+            const historyContainer = document.getElementById('history-log');
+            historyContainer.innerHTML = '';
+            if (state.history.length === 0) {
+                historyContainer.innerHTML = `<p class="text-xs text-slate-500 text-center py-4">ยังไม่มีประวัติการฝึกในระบบ</p>`;
+            } else {
+                state.history.forEach(item => {
+                    const cat = CATEGORY_MAP[item.category] || CATEGORY_MAP['STR'];
+                    const row = document.createElement('div');
+                    row.className = 'flex justify-between items-center text-xs p-2.5 rounded-lg bg-slate-900/60 border border-slate-800/80';
+                    row.innerHTML = `
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid ${cat.icon} ${cat.color}"></i>
+                            <span class="text-slate-200 font-medium">${item.title}</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="text-cyan-400 font-bold">+${item.xp} XP</span>
+                            <span class="text-slate-500 text-[10px]">${item.date}</span>
+                        </div>
+                    `;
+                    historyContainer.appendChild(row);
+                });
+            }
+
+            renderAchievements();
+        }
+
+        function renderAchievements() {
+            const list = document.getElementById('achievements-list');
+            list.innerHTML = '';
+
+            const totalCompleted = state.quests.reduce((acc, q) => acc + q.completedDates.length, 0);
+
+            const achievements = [
+                { id: 1, title: 'จุดเริ่มต้น', desc: 'ทำภารกิจแรกสำเร็จ', unlocked: totalCompleted >= 1, icon: 'fa-seedling' },
+                { id: 2, title: 'สายฟิตมือโปร', desc: 'พิชิต 10 ภารกิจ', unlocked: totalCompleted >= 10, icon: 'fa-fire' },
+                { id: 3, title: 'ระดับกัปตัน', desc: 'ถึงเลเวล 5', unlocked: state.character.level >= 5, icon: 'fa-shield-heart' },
+                { id: 4, title: 'จอมพลัง', desc: 'STR มากกว่า 30', unlocked: state.character.stats.str >= 30, icon: 'fa-dumbbell' }
+            ];
+
+            achievements.forEach(ach => {
+                const badge = document.createElement('div');
+                badge.className = `p-2 rounded-xl border text-center flex flex-col items-center justify-center gap-1 ${
+                    ach.unlocked 
+                        ? 'bg-amber-500/10 border-amber-500/40 text-amber-400' 
+                        : 'bg-slate-900/40 border-slate-800 text-slate-600 opacity-60'
+                }`;
+                badge.title = `${ach.title}: ${ach.desc}`;
+                badge.innerHTML = `
+                    <i class="fa-solid ${ach.icon} text-lg"></i>
+                    <span class="text-[9px] font-semibold truncate w-full">${ach.title}</span>
+                `;
+                list.appendChild(badge);
+            });
+        }
+
+        function setupModalDays() {
+            const container = document.getElementById('days-checkboxes');
+            container.innerHTML = '';
+            DAYS_OF_WEEK.forEach((day, idx) => {
+                const label = document.createElement('label');
+                label.className = 'flex flex-col items-center cursor-pointer';
+                label.innerHTML = `
+                    <input type="checkbox" value="${idx}" class="peer hidden" checked>
+                    <span class="w-8 h-8 rounded-lg bg-slate-950 border border-slate-700 text-xs flex items-center justify-center text-slate-400 peer-checked:bg-cyan-500 peer-checked:text-slate-950 peer-checked:font-bold transition-all">
+                        ${day[0]}
+                    </span>
+                `;
+                container.appendChild(label);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            setupModalDays();
+            render();
+
+            document.getElementById('char-name-input').addEventListener('change', (e) => {
+                state.character.name = e.target.value.trim() || 'นักฮีโร่สายสปอร์ต';
+                saveState();
+            });
+
+            document.getElementById('btn-reset-data').addEventListener('click', () => {
+                state = JSON.parse(JSON.stringify(defaultState));
+                saveState();
+            });
+
+            const modal = document.getElementById('quest-modal');
+            document.getElementById('btn-open-modal').onclick = () => modal.classList.remove('hidden');
+            document.getElementById('btn-close-modal').onclick = () => modal.classList.add('hidden');
+            document.getElementById('btn-cancel-modal').onclick = () => modal.classList.add('hidden');
+
+            document.getElementById('btn-close-levelup').onclick = () => {
+                document.getElementById('levelup-modal').classList.add('hidden');
+            };
+
+            document.getElementById('quest-form').onsubmit = (e) => {
+                e.preventDefault();
+
+                const title = document.getElementById('input-title').value.trim();
+                const category = document.getElementById('select-category').value;
+                const target = document.getElementById('input-target').value.trim();
+                const xp = parseInt(document.getElementById('input-xp').value) || 50;
+                const statGain = parseInt(document.getElementById('input-stat-gain').value) || 5;
+
+                const checkedBoxes = document.querySelectorAll('#days-checkboxes input[type="checkbox"]:checked');
+                const selectedDays = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
+
+                if (selectedDays.length === 0) {
+                    return;
+                }
+
+                const newQuest = {
+                    id: Date.now().toString(),
+                    title,
+                    category,
+                    target,
+                    xp,
+                    statGain,
+                    days: selectedDays,
+                    completedDates: []
+                };
+
+                state.quests.push(newQuest);
+                saveState();
+
+                document.getElementById('quest-form').reset();
+                setupModalDays();
+                modal.classList.add('hidden');
+            };
+        });
+    </script>
+</body>
+</html>
